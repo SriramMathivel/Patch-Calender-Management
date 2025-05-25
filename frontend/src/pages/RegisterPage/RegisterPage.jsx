@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Form, Button, Spinner, Image } from "react-bootstrap";
 
@@ -19,14 +19,7 @@ const RegisterPage = () => {
 
   const navigate = useNavigate();
   const { setAuth } = AuthState();
-  const auth = AuthState();
-  /*
-  useEffect(() => {
-    if (auth) {
-      return navigate("/"); // If user is already logged in, redirect to home page
-    }
-  });
-  */
+
   const handleCredentials = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
   };
