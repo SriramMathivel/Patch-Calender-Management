@@ -29,6 +29,12 @@ const ManageCustomer = () => {
             This page is under construction. Please check back later.
             <br />
             In the meantime, you can explore other features of the application.
+            <br />
+            Please write to{" "}
+            <a href="mailto: sriram.mathivel@tatacommunications.com">
+              sriram.mathivel@tatacommunications.com
+            </a>{" "}
+            for reporting any issues or for providing feedback.
           </p>
         </div>
       </center>

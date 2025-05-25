@@ -1,4 +1,4 @@
-const ManageServer = () => {
+const ExportCalendar = () => {
   return (
     <div>
       <center>
@@ -23,7 +23,7 @@ const ManageServer = () => {
           }}
         >
           <h1 style={{ marginTop: "20px", color: "#007bff" }}>
-            Manage Servers Page
+            Export Patch Calendar Page
           </h1>
           <p style={{ color: "#555" }}>
             This page is under construction. Please check back later.
@@ -42,4 +42,4 @@ const ManageServer = () => {
   );
 };
 
-export default ManageServer;
+export default ExportCalendar;

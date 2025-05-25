@@ -121,6 +121,7 @@ const AddEventModal = ({ show, onHide, onEventAdded, initialStartDate }) => {
                     name="serverGroup"
                     value={formData.serverGroup}
                     onChange={handleInputChange}
+                    required
                   />
                 </Form.Group>
               </Col>

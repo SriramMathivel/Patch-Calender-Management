@@ -15,6 +15,7 @@ import {
   PasswordResetPage,
   ManageServer,
   ManageCustomer,
+  ExportCalendar,
 } from "./pages";
 import { NavigationBar } from "./components";
 
@@ -28,6 +29,7 @@ const App = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/manageCustomer" element={<ManageCustomer />} />
           <Route path="/manageServer" element={<ManageServer />} />
+          <Route path="/ExportCalendar" element={<ExportCalendar />} />
         </Route>
 
         {/* Public routes */}

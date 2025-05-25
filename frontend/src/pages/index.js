@@ -6,3 +6,4 @@ export { default as PasswordResetPage } from "./PasswordResetPage/PasswordResetP
 export { default as ManageServer } from "./ManageServer/ManageServer";
 export { default as ManageCustomer } from "./ManageCustomer/ManageCustomer";
 export { default as AddEventModal } from "./AddEventModal/AddEventModal";
+export { default as ExportCalendar } from "./ExportCalendar/ExportCalendar";

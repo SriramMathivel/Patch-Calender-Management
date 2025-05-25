@@ -52,6 +52,9 @@ const NavigationBar = () => {
                 <Nav.Link as={Link} to="/manageServer" className="nav-link">
                   Manage Servers
                 </Nav.Link>
+                <Nav.Link as={Link} to="/ExportCalendar" className="nav-link">
+                  Export Calendar
+                </Nav.Link>
               </>
             )}
           </Nav>
