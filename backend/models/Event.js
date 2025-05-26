@@ -10,10 +10,6 @@ const EventSchema = new mongoose.Schema({
   osType: {
     type: String,
     required: [true, "OS type is required"],
-    enum: {
-      values: ["Windows", "Unix"],
-      message: "OS type must be either Windows or Unix",
-    },
   },
   serverGroup: {
     type: String,

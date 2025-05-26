@@ -14,6 +14,8 @@
     "@fullcalendar/multimonth": "^6.1.17",
     "@fullcalendar/react": "^6.1.17",
     "@fullcalendar/timegrid": "^6.1.17",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/lab": "^7.0.0-beta.12",
     "@mui/material": "^7.1.0",
     "@mui/x-date-pickers": "^8.4.0",
     "@testing-library/jest-dom": "^5.16.5",

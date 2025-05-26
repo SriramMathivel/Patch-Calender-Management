@@ -4,16 +4,16 @@ const Event = require("../models/Event.js");
 
 const router = express.Router();
 
-// // Middleware to validate ObjectId
-// const validateObjectId = (req, res, next) => {
-//   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-//     return res.status(400).json({ message: "Invalid event ID" });
-//   }
-//   next();
-// };
+// Middleware to validate ObjectId
+const validateObjectId = (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid event ID" });
+  }
+  next();
+};
 
-// // Apply middleware to routes that use :id
-// router.use("/:id", validateObjectId);
+// Apply middleware to routes that use :id
+router.use("/:id", validateObjectId);
 
 // GET all events
 router.get("/", async (req, res) => {
