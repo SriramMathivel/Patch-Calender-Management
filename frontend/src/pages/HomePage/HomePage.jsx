@@ -64,7 +64,6 @@ const HomePage = () => {
     const now = new Date();
     const startTime = new Date(editedEvent.scheduleStartTime);
     const endTime = new Date(editedEvent.scheduleEndTime);
-
     const requiredErrors = {
       customerName: !editedEvent.customerName,
       osType: !editedEvent.osType,

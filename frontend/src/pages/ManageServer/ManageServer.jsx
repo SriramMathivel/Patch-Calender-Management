@@ -19,6 +19,11 @@ import {
   CircularProgress,
   Autocomplete,
   TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
@@ -39,6 +44,9 @@ const ManageServer = () => {
     severity: "success",
   });
   const [loading, setLoading] = useState(true);
+  const [deletingGroup, setDeletingGroup] = useState(null);
+  const [showNewGroupDialog, setShowNewGroupDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
 
   const [formData, setFormData] = useState({
     CID: "",
@@ -79,12 +87,18 @@ const ManageServer = () => {
   };
 
   const groupServers = (servers) => {
-    return servers.reduce((acc, server) => {
+    const groups = servers.reduce((acc, server) => {
       const group = server.serverGroup || "Ungrouped";
       if (!acc[group]) acc[group] = [];
       acc[group].push(server);
       return acc;
     }, {});
+
+    if (addingNew && formData.serverGroup && !groups[formData.serverGroup]) {
+      groups[formData.serverGroup] = [];
+    }
+
+    return groups;
   };
 
   const validateForm = () => {
@@ -107,6 +121,7 @@ const ManageServer = () => {
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    setLoading(true);
     try {
       const method = editingServer ? "PUT" : "POST";
       const url = editingServer
@@ -129,7 +144,7 @@ const ManageServer = () => {
 
       if (!response.ok) throw new Error(await response.text());
 
-      fetchServers();
+      await fetchServers();
       cancelEdit();
       showNotification(
         `Server ${editingServer ? "updated" : "added"} successfully`,
@@ -137,27 +152,62 @@ const ManageServer = () => {
       );
     } catch (error) {
       showNotification(error.message || "Operation failed", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (server) => {
+    setLoading(true);
     try {
       const response = await fetch(`/api/servers/${server.CID}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Delete failed");
 
-      fetchServers();
+      await fetchServers();
       showNotification("Server deleted successfully", "success");
     } catch (error) {
       showNotification(error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteGroup = async (group) => {
+    setLoading(true);
+    try {
+      const serversToDelete = servers.filter(
+        (s) => s.customerName === selectedCustomer && s.serverGroup === group
+      );
+      const deletePromises = serversToDelete.map((server) =>
+        fetch(`/api/servers/${server.CID}`, { method: "DELETE" })
+      );
+
+      const results = await Promise.allSettled(deletePromises);
+      const failedDeletes = results.filter(
+        (result) => result.status === "rejected"
+      );
+
+      if (failedDeletes.length > 0) {
+        throw new Error(
+          `Failed to delete ${failedDeletes.length} servers in the group`
+        );
+      }
+
+      showNotification(`Group "${group}" deleted successfully`, "success");
+    } catch (error) {
+      showNotification(error.message || "Failed to delete group", "error");
+    } finally {
+      await fetchServers();
+      setLoading(false);
     }
   };
 
   const startEdit = (server) => {
     setEditingServer(server.CID);
     setFormData(server);
-    setErrors({}); // Reset errors when starting edit
+    setErrors({});
   };
 
   const startAdd = (group) => {
@@ -177,7 +227,8 @@ const ManageServer = () => {
       mDBA: "No",
       customerMailID: "",
     });
-    setErrors({}); // Reset errors when starting add
+    setExpandedGroup(group);
+    setErrors({});
   };
 
   const cancelEdit = () => {
@@ -263,7 +314,14 @@ const ManageServer = () => {
               <Typography variant="subtitle1">{group}</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ p: 0 }}>
-              <Box sx={{ p: 1, display: "flex", justifyContent: "flex-end" }}>
+              <Box
+                sx={{
+                  p: 1,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 1,
+                }}
+              >
                 <Button
                   startIcon={<AddIcon />}
                   size="small"
@@ -272,6 +330,16 @@ const ManageServer = () => {
                   sx={{ mb: 1 }}
                 >
                   Add Server
+                </Button>
+                <Button
+                  startIcon={<DeleteIcon />}
+                  size="small"
+                  color="error"
+                  onClick={() => setDeletingGroup(group)}
+                  disabled={!!editingServer || addingNew}
+                  sx={{ mb: 1 }}
+                >
+                  Delete Group
                 </Button>
               </Box>
               <TableContainer component={Paper}>
@@ -289,7 +357,6 @@ const ManageServer = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {/* New server row at the top */}
                     {addingNew && formData.serverGroup === group && (
                       <TableRow>
                         <TableCell>
@@ -401,9 +468,7 @@ const ManageServer = () => {
                         </TableCell>
                       </TableRow>
                     )}
-
-                    {/* Existing servers */}
-                    {groupedServers[group].map((server) => (
+                    {(groupedServers[group] || []).map((server) => (
                       <TableRow key={server.CID} hover>
                         {editingServer === server.CID ? (
                           <>
@@ -551,6 +616,76 @@ const ManageServer = () => {
             </AccordionDetails>
           </Accordion>
         ))}
+
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+        <Button
+          startIcon={<AddIcon />}
+          variant="outlined"
+          onClick={() => setShowNewGroupDialog(true)}
+        >
+          Create New Group
+        </Button>
+      </Box>
+
+      {/* Delete Group Confirmation Dialog */}
+      <Dialog
+        open={Boolean(deletingGroup)}
+        onClose={() => setDeletingGroup(null)}
+      >
+        <DialogTitle>Delete Group</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the entire group "{deletingGroup}"?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingGroup(null)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              handleDeleteGroup(deletingGroup);
+              setDeletingGroup(null);
+            }}
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create New Group Dialog */}
+      <Dialog
+        open={showNewGroupDialog}
+        onClose={() => setShowNewGroupDialog(false)}
+      >
+        <DialogTitle>Create New Group</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Group Name"
+            fullWidth
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowNewGroupDialog(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (newGroupName.trim()) {
+                startAdd(newGroupName.trim());
+                setShowNewGroupDialog(false);
+                setNewGroupName("");
+              }
+            }}
+            color="primary"
+          >
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={notification.open}
