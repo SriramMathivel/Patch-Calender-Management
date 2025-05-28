@@ -7,7 +7,7 @@ const router = express.Router();
 // Middleware to validate ObjectId
 const validateObjectId = (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-    return res.status(400).json({ message: "Invalid event ID" });
+    return res.status(400).json({ message: "Invalid Schedule ID" });
   }
   next();
 };
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 
     res.json(events);
   } catch (err) {
-    console.error("Error fetching events:", err);
+    console.error("Error fetching Patch Schedules:", err);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -57,7 +57,7 @@ router.put("/:id", async (req, res) => {
       { new: true }
     );
     if (!updatedEvent) {
-      return res.status(404).json({ message: "Event not found" });
+      return res.status(404).json({ message: "Patch Schedule not found" });
     }
     res.json(updatedEvent);
   } catch (err) {
@@ -72,7 +72,7 @@ router.delete("/:id", async (req, res) => {
     if (!deletedEvent) {
       return res.status(404).json({ message: "Event not found" });
     }
-    res.json({ message: "Event deleted" });
+    res.json({ message: "Patch Schedule deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

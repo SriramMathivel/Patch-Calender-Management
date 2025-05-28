@@ -1,7 +1,7 @@
 {
-  "name": "mern-stack-authentication-boilerplate",
+  "name": "patch-calendar-management-backend",
   "version": "1.0.0",
-  "description": "Ultimate MERN Stack Authentication Boilerplate for production use",
+  "description": "Patch calendar management backend using Node.js, Express, and MongoDB",
   "main": "server.js",
   "scripts": {
     "start": "nodemon server.js",
@@ -10,15 +10,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rtewari056/mern-stack-authentication-boilerplate.git"
+    "url": "git+https://github.com/SriramMathivel/Patch-Calender-Management.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/rtewari056/mern-stack-authentication-boilerplate/issues"
+    "url": "https://github.com/SriramMathivel/Patch-Calender-Management/issues"
   },
-  "homepage": "https://github.com/rtewari056/mern-stack-authentication-boilerplate#readme",
+  "homepage": "https://github.com/SriramMathivel/Patch-Calender-Management/blob/master/README.md",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

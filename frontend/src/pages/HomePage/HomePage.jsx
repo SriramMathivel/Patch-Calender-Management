@@ -20,10 +20,6 @@ import {
   Typography,
   TextField,
   Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Autocomplete,
   Table,
   TableBody,
@@ -32,8 +28,24 @@ import {
   TableHead,
   IconButton,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
-import { CheckCircle, Warning, Edit, Delete, Add } from "@mui/icons-material";
+import {
+  CheckCircle,
+  Edit,
+  Delete,
+  Error,
+  Launch as LaunchIcon,
+  Pending,
+} from "@mui/icons-material";
+import ContentCopy from "@mui/icons-material/ContentCopy";
+import Mail from "@mui/icons-material/Mail";
+import ConfirmationNumber from "@mui/icons-material/ConfirmationNumber";
+import Tooltip from "@mui/material/Tooltip";
 import { DateTimePicker } from "@mui/x-date-pickers";
 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -57,6 +69,7 @@ const HomePage = () => {
     message: "",
     severity: "info",
   });
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,6 +94,36 @@ const HomePage = () => {
       Boolean
     ),
     osTypes: [...new Set(servers.map((s) => s.osType))].filter(Boolean),
+  };
+
+  // Get filtered server groups for current customer
+  const getServerGroupOptions = () => {
+    if (!formData.customerName) return filterOptions.serverGroups;
+    return [
+      ...new Set(
+        servers
+          .filter((s) => s.customerName === formData.customerName)
+          .map((s) => s.serverGroup)
+      ),
+    ].filter(Boolean);
+  };
+
+  // Get filtered OS types for current customer and server group
+  const getOSTypeOptions = () => {
+    if (!formData.customerName || !formData.serverGroup)
+      return filterOptions.osTypes;
+
+    return [
+      ...new Set(
+        servers
+          .filter(
+            (s) =>
+              s.customerName === formData.customerName &&
+              s.serverGroup === formData.serverGroup
+          )
+          .map((s) => s.osType)
+      ),
+    ].filter(Boolean);
   };
 
   useEffect(() => {
@@ -125,7 +168,7 @@ const HomePage = () => {
   // Event Handlers
   const handleDateClick = (arg) => {
     if (arg.date < new Date()) {
-      showSnackbar("Cannot schedule past events", "error");
+      showSnackbar("Cannot schedule activities in past", "error");
       return;
     }
     setFormData({
@@ -173,11 +216,14 @@ const HomePage = () => {
 
       await axios[method](url, payload);
       await fetchData();
-      showSnackbar(`Event ${selectedEvent ? "updated" : "created"}`, "success");
+      showSnackbar(
+        `Patch Schedule ${selectedEvent ? "updated" : "created"}`,
+        "success"
+      );
       closeModal();
     } catch (error) {
       showSnackbar(
-        `Error ${selectedEvent ? "updating" : "creating"} event`,
+        `Error ${selectedEvent ? "updating" : "creating"} Patch Schedule`,
         "error"
       );
     } finally {
@@ -190,13 +236,22 @@ const HomePage = () => {
       setLoading(true);
       await axios.delete(`/api/events/${selectedEvent.id}`);
       await fetchData();
-      showSnackbar("Event deleted", "success");
+      showSnackbar("Patch Schedule deleted", "success");
       closeModal();
+      setDeleteConfirmOpen(false);
     } catch (error) {
-      showSnackbar("Error deleting event", "error");
+      showSnackbar("Error deleting Schedule", "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
   };
 
   // Helper functions
@@ -226,6 +281,54 @@ const HomePage = () => {
       scheduleEndTime: false,
     });
   };
+  const handleCopyContent = () => {
+    if (!selectedEvent) return;
+
+    // Get main table content with formatting
+    const mainTable = document.getElementById("event-details-table");
+    const mainTableRows = mainTable.querySelectorAll("tr");
+    let mainTableText = "Event Details:\n\n";
+
+    mainTableRows.forEach((row) => {
+      const cells = row.querySelectorAll("td");
+      const rowText = Array.from(cells)
+        .map((cell) => cell.innerText.trim())
+        .filter((text) => text !== "") // Remove empty cells
+        .join("\t");
+
+      if (rowText) {
+        mainTableText += rowText + "\n";
+      }
+    });
+
+    // Get servers table content with formatting
+    const serversTable = document.getElementById("servers-table");
+    const serversTableRows = serversTable.querySelectorAll("tr");
+    let serversTableText = "\nAffected Servers:\n\n";
+
+    serversTableRows.forEach((row) => {
+      const cells = row.querySelectorAll("th, td");
+      const rowText = Array.from(cells)
+        .map((cell) => cell.innerText.trim())
+        .join("\t");
+
+      serversTableText += rowText + "\n";
+    });
+
+    // Combine both tables
+    const fullText = mainTableText + serversTableText;
+
+    // Copy to clipboard
+    navigator.clipboard
+      .writeText(fullText)
+      .then(() => {
+        showSnackbar("Content copied to clipboard", "success");
+      })
+      .catch((err) => {
+        console.error("Failed to copy content:", err);
+        showSnackbar("Failed to copy content", "error");
+      });
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -249,6 +352,7 @@ const HomePage = () => {
           events={events}
           dateClick={handleDateClick}
           eventClick={handleEventClick}
+          nowIndicator={true}
           themeSystem="bootstrap5"
           firstDay={1}
           selectable="true"
@@ -274,11 +378,14 @@ const HomePage = () => {
         {/* Add/Edit Modal */}
         <Modal open={modalOpen === "add"} onClose={closeModal}>
           <Box sx={modalStyle} component="form" onSubmit={handleFormSubmit}>
-            <Typography variant="h6" mb={3}>
-              {selectedEvent ? "Edit Schedule" : "New Patching Schedule"}
+            <Typography variant="h6" mb={2} mt={1}>
+              <center>
+                {selectedEvent
+                  ? "Edit Schedule"
+                  : "Create New Patching Schedule"}
+              </center>
             </Typography>
-
-            <Stack spacing={3}>
+            <Stack spacing={2}>
               <Autocomplete
                 options={filterOptions.customers}
                 value={formData.customerName}
@@ -299,101 +406,96 @@ const HomePage = () => {
                   />
                 )}
               />
-
-              <FormControl fullWidth error={errors.serverGroup}>
-                <InputLabel>Server Group *</InputLabel>
-                <Select
+              <Stack direction="row" spacing={2}>
+                <Autocomplete
+                  options={getServerGroupOptions()}
                   value={formData.serverGroup}
-                  onChange={(e) =>
+                  onChange={(_, value) =>
                     setFormData((prev) => ({
                       ...prev,
-                      serverGroup: e.target.value,
+                      serverGroup: value,
                       osType: "",
                     }))
                   }
-                >
-                  {filterOptions.serverGroups
-                    .filter((group) =>
-                      servers.some(
-                        (s) =>
-                          s.customerName === formData.customerName &&
-                          s.serverGroup === group
-                      )
-                    )
-                    .map((group) => (
-                      <MenuItem key={group} value={group}>
-                        {group}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth error={errors.osType}>
-                <InputLabel>OS Type *</InputLabel>
-                <Select
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Server Group *"
+                      error={errors.serverGroup}
+                      helperText={errors.serverGroup && "Required field"}
+                    />
+                  )}
+                  disabled={!formData.customerName}
+                  sx={{ flex: 1 }}
+                />
+                <Autocomplete
+                  options={getOSTypeOptions()}
                   value={formData.osType}
-                  onChange={(e) =>
+                  onChange={(_, value) =>
                     setFormData((prev) => ({
                       ...prev,
-                      osType: e.target.value,
+                      osType: value,
                     }))
                   }
-                >
-                  {filterOptions.osTypes
-                    .filter((os) =>
-                      servers.some(
-                        (s) =>
-                          s.customerName === formData.customerName &&
-                          s.serverGroup === formData.serverGroup &&
-                          s.osType === os
-                      )
-                    )
-                    .map((os) => (
-                      <MenuItem key={os} value={os}>
-                        {os}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="OS Type *"
+                      error={errors.osType}
+                      helperText={errors.osType && "Required field"}
+                    />
+                  )}
+                  disabled={!formData.serverGroup}
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
+              <Stack direction="row" spacing={2}>
+                <DateTimePicker
+                  label="Start Time *"
+                  value={formData.scheduleStartTime}
+                  onChange={(newValue) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      scheduleStartTime: newValue,
+                      scheduleEndTime: new Date(
+                        newValue.getTime() + 6 * 60 * 60 * 1000
+                      ),
+                    }))
+                  }
+                  slotProps={{
+                    textField: {
+                      error: errors.scheduleStartTime,
+                      helperText:
+                        errors.scheduleStartTime && "Cannot be in past",
+                    },
+                    popper: {
+                      placement: "right-start",
+                    },
+                  }}
+                />
 
-              <DateTimePicker
-                label="Start Time *"
-                value={formData.scheduleStartTime}
-                onChange={(newValue) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    scheduleStartTime: newValue,
-                    scheduleEndTime: new Date(
-                      newValue.getTime() + 6 * 60 * 60 * 1000
-                    ),
-                  }))
-                }
-                slotProps={{
-                  textField: {
-                    error: errors.scheduleStartTime,
-                    helperText: errors.scheduleStartTime && "Cannot be in past",
-                  },
-                }}
-              />
-
-              <DateTimePicker
-                label="End Time *"
-                value={formData.scheduleEndTime}
-                onChange={(newValue) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    scheduleEndTime: newValue,
-                  }))
-                }
-                minDateTime={formData.scheduleStartTime}
-                slotProps={{
-                  textField: {
-                    error: errors.scheduleEndTime,
-                    helperText:
-                      errors.scheduleEndTime && "Must be after start time",
-                  },
-                }}
-              />
+                <DateTimePicker
+                  label="End Time *"
+                  value={formData.scheduleEndTime}
+                  onChange={(newValue) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      scheduleEndTime: newValue,
+                    }))
+                  }
+                  minDateTime={formData.scheduleStartTime}
+                  slotProps={{
+                    textField: {
+                      error: errors.scheduleEndTime,
+                      helperText:
+                        errors.scheduleEndTime && "Must be after start time",
+                    },
+                    popper: {
+                      placement: "right-start",
+                    },
+                  }}
+                />
+              </Stack>
 
               <Button type="submit" variant="contained" size="large">
                 {selectedEvent ? "Update Schedule" : "Create Schedule"}
@@ -408,17 +510,18 @@ const HomePage = () => {
             {selectedEvent && (
               <>
                 <Stack direction="row" justifyContent="space-between" mb={3}>
-                  <Typography variant="h5">
-                    {selectedEvent.extendedProps.customerName}
-                  </Typography>
                   <Stack direction="row" spacing={1}>
                     <Chip
+                      size="small"
                       icon={
                         selectedEvent.extendedProps.ticketCreationStatus ===
                         "Created" ? (
                           <CheckCircle />
+                        ) : selectedEvent.extendedProps.ticketCreationStatus ===
+                          "Failed" ? (
+                          <Error />
                         ) : (
-                          <Warning />
+                          <Pending />
                         )
                       }
                       label={`Ticket ${selectedEvent.extendedProps.ticketCreationStatus}`}
@@ -426,16 +529,23 @@ const HomePage = () => {
                         selectedEvent.extendedProps.ticketCreationStatus ===
                         "Created"
                           ? "success"
-                          : "error"
+                          : selectedEvent.extendedProps.ticketCreationStatus ===
+                            "Failed"
+                          ? "error"
+                          : "warning"
                       }
                     />
                     <Chip
+                      size="small"
                       icon={
                         selectedEvent.extendedProps.mailNotificationStatus ===
                         "Sent" ? (
                           <CheckCircle />
+                        ) : selectedEvent.extendedProps
+                            .mailNotificationStatus === "Failed" ? (
+                          <Error />
                         ) : (
-                          <Warning />
+                          <Pending />
                         )
                       }
                       label={`Email ${selectedEvent.extendedProps.mailNotificationStatus}`}
@@ -443,20 +553,72 @@ const HomePage = () => {
                         selectedEvent.extendedProps.mailNotificationStatus ===
                         "Sent"
                           ? "success"
-                          : "error"
+                          : selectedEvent.extendedProps
+                              .mailNotificationStatus === "Not Sent"
+                          ? "error"
+                          : "warning"
                       }
                     />
                   </Stack>
+
+                  {/* Action Buttons */}
+                  <Stack direction="row" spacing={1}>
+                    <Tooltip title="Create Ticket">
+                      <IconButton
+                        onClick={() => console.log("Create Ticket clicked")}
+                        color="primary"
+                      >
+                        <ConfirmationNumber fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Send Mail">
+                      <IconButton
+                        onClick={() => console.log("Send Mail clicked")}
+                        color="primary"
+                      >
+                        <Mail fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Copy Content">
+                      <IconButton onClick={handleCopyContent} color="primary">
+                        <ContentCopy fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    <IconButton
+                      onClick={() => {
+                        setFormData({
+                          customerName:
+                            selectedEvent.extendedProps.customerName,
+                          serverGroup: selectedEvent.extendedProps.serverGroup,
+                          osType: selectedEvent.extendedProps.osType,
+                          scheduleStartTime: new Date(selectedEvent.start),
+                          scheduleEndTime: new Date(selectedEvent.end),
+                        });
+                        setModalOpen("add");
+                      }}
+                      color="primary"
+                    >
+                      <Edit />
+                    </IconButton>
+
+                    <IconButton onClick={handleDeleteClick} color="error">
+                      <Delete />
+                    </IconButton>
+                  </Stack>
                 </Stack>
 
-                <Table size="small" sx={{ mb: 3 }}>
+                {/* Event Details Table */}
+                <Table size="small" sx={{ mb: 3 }} id="event-details-table">
                   <TableBody>
                     <TableRow>
                       <TableCell>
-                        <strong>Server Group:</strong>
+                        <strong>Customer Name:</strong>
                       </TableCell>
                       <TableCell>
-                        {selectedEvent.extendedProps.serverGroup}
+                        {selectedEvent.extendedProps.customerName}
                       </TableCell>
                       <TableCell>
                         <strong>OS Type:</strong>
@@ -465,6 +627,7 @@ const HomePage = () => {
                         {selectedEvent.extendedProps.osType}
                       </TableCell>
                     </TableRow>
+
                     <TableRow>
                       <TableCell>
                         <strong>Start Time:</strong>
@@ -477,16 +640,39 @@ const HomePage = () => {
                       </TableCell>
                       <TableCell>{format(selectedEvent.end, "PPpp")}</TableCell>
                     </TableRow>
-                    {selectedEvent.extendedProps.ticketNumber && (
-                      <TableRow>
-                        <TableCell>
-                          <strong>Ticket Number:</strong>
-                        </TableCell>
-                        <TableCell colSpan={3}>
-                          {selectedEvent.extendedProps.ticketNumber}
-                        </TableCell>
-                      </TableRow>
-                    )}
+
+                    <TableRow>
+                      <TableCell>
+                        <strong>Server Group:</strong>
+                      </TableCell>
+                      <TableCell>
+                        {selectedEvent.extendedProps.serverGroup}
+                      </TableCell>
+                      {selectedEvent.extendedProps.ticketNumber ? (
+                        <>
+                          <TableCell>
+                            <strong>Ticket Number:</strong>
+                          </TableCell>
+                          <TableCell>
+                            {selectedEvent.extendedProps.ticketNumber}
+                            <IconButton
+                              href={`https://tatain.service-now.com/nav_to.do?uri=task.do?sysparm_query=number=/${selectedEvent.extendedProps.ticketNumber}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              size="small"
+                              sx={{ ml: 1 }}
+                            >
+                              <LaunchIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
+                        </>
+                      )}
+                    </TableRow>
                   </TableBody>
                 </Table>
 
@@ -495,7 +681,11 @@ const HomePage = () => {
                   {selectedEvent.extendedProps.servers?.length || 0})
                 </Typography>
 
-                <Box sx={{ maxHeight: 300, overflow: "auto" }}>
+                {/* Servers Table */}
+                <Box
+                  sx={{ maxHeight: 300, overflow: "auto" }}
+                  id="servers-table"
+                >
                   <Table stickyHeader size="small">
                     <TableHead>
                       <TableRow>
@@ -517,36 +707,32 @@ const HomePage = () => {
                     </TableBody>
                   </Table>
                 </Box>
-
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  mt={3}
-                  justifyContent="flex-end"
-                >
-                  <IconButton
-                    onClick={() => {
-                      setFormData({
-                        customerName: selectedEvent.extendedProps.customerName,
-                        serverGroup: selectedEvent.extendedProps.serverGroup,
-                        osType: selectedEvent.extendedProps.osType,
-                        scheduleStartTime: new Date(selectedEvent.start),
-                        scheduleEndTime: new Date(selectedEvent.end),
-                      });
-                      setModalOpen("add");
-                    }}
-                    color="primary"
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={handleDelete} color="error">
-                    <Delete />
-                  </IconButton>
-                </Stack>
               </>
             )}
           </Box>
         </Modal>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteConfirmOpen}
+          onClose={handleDeleteCancel}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <DialogTitle id="alert-dialog-title">{"Confirm Delete"}</DialogTitle>
+          <DialogContent>
+            <DialogContentText id="alert-dialog-description">
+              Are you sure you want to delete this patching schedule? This
+              action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleDeleteCancel}>Cancel</Button>
+            <Button onClick={handleDelete} color="error" autoFocus>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Loading */}
         <Modal open={loading} sx={loadingStyle}>
@@ -575,10 +761,10 @@ const modalStyle = {
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: 500,
+  width: 550,
   bgcolor: "background.paper",
   boxShadow: 24,
-  p: 4,
+  p: 3,
   borderRadius: 2,
 };
 

@@ -690,9 +690,14 @@ const ManageServer = () => {
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         onClose={() => setNotification({ ...notification, open: false })}
       >
-        <Alert severity={notification.severity} sx={{ width: "100%" }}>
+        <Alert
+          variant="filled"
+          severity={notification.severity}
+          sx={{ width: "100%" }}
+        >
           {notification.message}
         </Alert>
       </Snackbar>
