@@ -70,6 +70,7 @@ const HomePage = () => {
     severity: "info",
   });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -149,21 +150,36 @@ const HomePage = () => {
   };
 
   const transformEvents = (events) =>
-    events.map((event) => ({
-      id: event._id,
-      title: `${event.customerName} (${event.serverGroup})`,
-      start: new Date(event.scheduleStartTime),
-      end: new Date(event.scheduleEndTime),
-      extendedProps: {
-        ...event,
-        servers: servers.filter(
-          (s) =>
-            s.serverGroup === event.serverGroup &&
-            s.customerName === event.customerName &&
-            s.osType === event.osType
-        ),
-      },
-    }));
+    events.map((event) => {
+      const baseEvent = {
+        id: event._id,
+        title: `${event.customerName} - (${event.serverGroup}) - ${event.osType}`,
+        start: new Date(event.scheduleStartTime),
+        end: new Date(event.scheduleEndTime),
+        extendedProps: {
+          ...event,
+          servers: servers.filter(
+            (s) =>
+              s.serverGroup === event.serverGroup &&
+              s.customerName === event.customerName &&
+              s.osType === event.osType
+          ),
+        },
+      };
+
+      // Add color properties based on ticket creation status
+      if (event.ticketCreationStatus === "Created") {
+        baseEvent.backgroundColor = "#28a745"; // Green
+        baseEvent.borderColor = "#28a745";
+        baseEvent.textColor = "white";
+      } else if (event.ticketCreationStatus === "Failed") {
+        baseEvent.backgroundColor = "#dc3545"; // Red
+        baseEvent.borderColor = "#dc3545";
+        baseEvent.textColor = "white";
+      }
+
+      return baseEvent;
+    });
 
   // Event Handlers
   const handleDateClick = (arg) => {
@@ -254,6 +270,70 @@ const HomePage = () => {
     setDeleteConfirmOpen(false);
   };
 
+  // ServiceNow Ticket Creation with custom headers
+  const handleCreateTicket = async () => {
+    if (!selectedEvent) return;
+
+    setIsCreatingTicket(true);
+    try {
+      const { customerName, serverGroup, osType, servers } =
+        selectedEvent.extendedProps;
+
+      // Make request to backend endpoint
+      const response = await axios.post("/api/tickets", {
+        customerName,
+        serverGroup,
+        osType,
+        servers,
+        start: selectedEvent.start,
+        end: selectedEvent.end,
+      });
+
+      const ticketNumber = response.data.ticketNumber;
+
+      // Update event with ticket number
+      await axios.put(`/api/events/${selectedEvent.id}`, {
+        ticketNumber,
+        ticketCreationStatus: "Created",
+      });
+
+      // Update local state
+      setSelectedEvent((prev) => ({
+        ...prev,
+        extendedProps: {
+          ...prev.extendedProps,
+          ticketNumber,
+          ticketCreationStatus: "Created",
+        },
+      }));
+
+      showSnackbar(`Ticket ${ticketNumber} created successfully!`, "success");
+    } catch (error) {
+      console.error("Ticket creation failed:", error);
+
+      // Update event with failure status
+      try {
+        await axios.put(`/api/events/${selectedEvent.id}`, {
+          ticketCreationStatus: "Failed",
+        });
+
+        setSelectedEvent((prev) => ({
+          ...prev,
+          extendedProps: {
+            ...prev.extendedProps,
+            ticketCreationStatus: "Failed",
+          },
+        }));
+      } catch (updateError) {
+        console.error("Failed to update event status:", updateError);
+      }
+
+      showSnackbar("Failed to create ServiceNow ticket", "error");
+    } finally {
+      setIsCreatingTicket(false);
+    }
+  };
+
   // Helper functions
   const validateForm = () => {
     const newErrors = {
@@ -281,10 +361,10 @@ const HomePage = () => {
       scheduleEndTime: false,
     });
   };
+
   const handleCopyContent = () => {
     if (!selectedEvent) return;
 
-    // Get main table content with formatting
     const mainTable = document.getElementById("event-details-table");
     const mainTableRows = mainTable.querySelectorAll("tr");
     let mainTableText = "Event Details:\n\n";
@@ -293,7 +373,7 @@ const HomePage = () => {
       const cells = row.querySelectorAll("td");
       const rowText = Array.from(cells)
         .map((cell) => cell.innerText.trim())
-        .filter((text) => text !== "") // Remove empty cells
+        .filter((text) => text !== "")
         .join("\t");
 
       if (rowText) {
@@ -301,7 +381,6 @@ const HomePage = () => {
       }
     });
 
-    // Get servers table content with formatting
     const serversTable = document.getElementById("servers-table");
     const serversTableRows = serversTable.querySelectorAll("tr");
     let serversTableText = "\nAffected Servers:\n\n";
@@ -315,10 +394,8 @@ const HomePage = () => {
       serversTableText += rowText + "\n";
     });
 
-    // Combine both tables
     const fullText = mainTableText + serversTableText;
 
-    // Copy to clipboard
     navigator.clipboard
       .writeText(fullText)
       .then(() => {
@@ -524,7 +601,10 @@ const HomePage = () => {
                           <Pending />
                         )
                       }
-                      label={`Ticket ${selectedEvent.extendedProps.ticketCreationStatus}`}
+                      label={`Ticket ${
+                        selectedEvent.extendedProps.ticketCreationStatus ||
+                        "Not Created"
+                      }`}
                       color={
                         selectedEvent.extendedProps.ticketCreationStatus ===
                         "Created"
@@ -564,12 +644,22 @@ const HomePage = () => {
                   {/* Action Buttons */}
                   <Stack direction="row" spacing={1}>
                     <Tooltip title="Create Ticket">
-                      <IconButton
-                        onClick={() => console.log("Create Ticket clicked")}
-                        color="primary"
-                      >
-                        <ConfirmationNumber fontSize="small" />
-                      </IconButton>
+                      <span>
+                        <IconButton
+                          onClick={handleCreateTicket}
+                          color="primary"
+                          disabled={
+                            selectedEvent.extendedProps.ticketCreationStatus ===
+                              "Created" || isCreatingTicket
+                          }
+                        >
+                          {isCreatingTicket ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <ConfirmationNumber fontSize="small" />
+                          )}
+                        </IconButton>
+                      </span>
                     </Tooltip>
 
                     <Tooltip title="Send Mail">
@@ -648,28 +738,23 @@ const HomePage = () => {
                       <TableCell>
                         {selectedEvent.extendedProps.serverGroup}
                       </TableCell>
-                      {selectedEvent.extendedProps.ticketNumber ? (
+
+                      {selectedEvent.extendedProps.ticketNumber && (
                         <>
                           <TableCell>
                             <strong>Ticket Number:</strong>
                           </TableCell>
-                          <TableCell>
+                          <TableCell colSpan={3}>
                             {selectedEvent.extendedProps.ticketNumber}
                             <IconButton
-                              href={`https://tatain.service-now.com/nav_to.do?uri=task.do?sysparm_query=number=/${selectedEvent.extendedProps.ticketNumber}`}
+                              href={`${process.env.REACT_APP_SN_BASE_URL}/nav_to.do?uri=task.do?sysparm_query=number=${selectedEvent.extendedProps.ticketNumber}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               size="small"
-                              sx={{ ml: 1 }}
                             >
-                              <LaunchIcon fontSize="small" />
+                              <LaunchIcon fontSize="24" />
                             </IconButton>
                           </TableCell>
-                        </>
-                      ) : (
-                        <>
-                          <TableCell></TableCell>
-                          <TableCell></TableCell>
                         </>
                       )}
                     </TableRow>

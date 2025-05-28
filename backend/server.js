@@ -16,6 +16,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/private", require("./routes/private"));
 app.use("/api/events", require("./routes/events"));
 app.use("/api/servers", require("./routes/servers"));
+app.use("/api/tickets", require("./routes/ticketRoutes"));
 
 // --------------------------DEPLOYMENT------------------------------
 

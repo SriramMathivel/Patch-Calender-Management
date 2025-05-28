@@ -416,6 +416,8 @@ const ManageServer = () => {
                         </TableCell>
                         <TableCell>
                           <TextField
+                            select
+                            sx={{ width: 120 }}
                             value={formData.osType}
                             onChange={(e) =>
                               setFormData({
@@ -427,7 +429,12 @@ const ManageServer = () => {
                             error={!!errors.osType}
                             helperText={errors.osType}
                             required
-                          />
+                            SelectProps={{ native: true }}
+                          >
+                            <option value="Windows">Windows</option>
+                            <option value="Unix">Unix</option>
+                            <option value="Database">Database</option>
+                          </TextField>
                         </TableCell>
                         <TableCell>
                           <TextField
@@ -529,6 +536,7 @@ const ManageServer = () => {
                             </TableCell>
                             <TableCell>
                               <TextField
+                                select
                                 value={formData.osType}
                                 onChange={(e) =>
                                   setFormData({
@@ -540,7 +548,12 @@ const ManageServer = () => {
                                 error={!!errors.osType}
                                 helperText={errors.osType}
                                 required
-                              />
+                                SelectProps={{ native: true }}
+                              >
+                                <option value="Windows">Windows</option>
+                                <option value="Unix">Unix</option>
+                                <option value="Database">Database</option>
+                              </TextField>
                             </TableCell>
                             <TableCell>
                               <TextField
